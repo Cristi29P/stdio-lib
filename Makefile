@@ -3,13 +3,13 @@ CFLAGS = -Wall -Wextra -Wconversion -g
 
 all: build
 
-build: so_lib
+build: so_stdio
 
-so_lib: so_lib.o
+so_stdio: so_stdio.o
 
-so_lib.o: so_lib.c so_lib.h
+so_stdio.o: so_stdio.c so_stdio.h
 
 .PHONY: clean
 
 clean:
-	rm -f *.o *~ so_lib
+	rm -f *.o *~ so_stdio
