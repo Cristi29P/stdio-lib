@@ -9,8 +9,8 @@ struct _so_file {
 	int last_action; /* Last I/O operation on the buffer */
 	char buffer[BUFF_SIZE]; /* The associated file buffer used for I/O tasks */
 	char opening_mode[MODE_LENGTH];
-	char error; /* Flag set if error occurred during file I/O tasks */
-	char eof_reached;
+	int error; /* Flag set if error occurred during file I/O tasks */
+	int eof_reached;
 };
 
 SO_FILE *so_fopen(const char *pathname, const char *mode) {
@@ -42,6 +42,11 @@ SO_FILE *so_fopen(const char *pathname, const char *mode) {
 }
 
 int so_fclose(SO_FILE *stream) {
+	if (stream->last_action == WRITE_OPERATION) {
+		so_fflush(stream);
+	}
+
+
 	int rt = close(stream->fd);
 	free(stream);
 
@@ -53,7 +58,17 @@ int so_fileno(SO_FILE *stream) {
 }
 
 int so_fflush(SO_FILE *stream) {
-	return 0;
+	if (stream->last_action == WRITE_OPERATION) {
+		if (write(stream->fd, stream->buffer, stream->buffer_pointer) < 0) {
+			stream->error = !stream->error;
+			return SO_EOF;
+		}
+
+		memset(stream->buffer, '\0', BUFF_SIZE);
+		stream->buffer_pointer = 0;
+		return 0;
+	}
+	return SO_EOF;
 }
 
 int so_fseek(SO_FILE *stream, long offset, int whence) {
@@ -93,12 +108,12 @@ int so_fgetc(SO_FILE *stream) {
 			int rv = (int) read(stream->fd, stream->buffer, BUFF_SIZE);
 
 			if (!rv) {
-				stream->eof_reached = 1;
+				stream->eof_reached = !stream->eof_reached;
 				return SO_EOF;
 			}
 
 			if (rv < 0) {
-				stream->error = 1;
+				stream->error = !stream->error;
 				return SO_EOF;
 			}
 
@@ -106,15 +121,31 @@ int so_fgetc(SO_FILE *stream) {
 			stream->buffer_pointer = 0; /* Make sure we read from the beginning of the buffer */
 		}
 		stream->file_pointer++;
+		stream->last_action = READ_OPERATION;
 		return (int) stream->buffer[stream->buffer_pointer++];
 	}
 
-	stream->error = 1; /* We couldn't read a character, so we have an error */
+	stream->error = !stream->error; /* We couldn't read a character, so we have an error */
 	return SO_EOF;
 }
 
 int so_fputc(int c, SO_FILE *stream) {
-	return 0;
+	if (writeRight(stream->opening_mode)) {
+		if (stream->buffer_pointer == BUFF_SIZE) {
+			if (so_fflush(stream) == SO_EOF) {
+				stream->error = !stream->error;
+				return SO_EOF;
+			}
+		}
+
+		stream->buffer[stream->buffer_pointer++] = (char) c;
+		stream->file_pointer++;
+		stream->last_action = WRITE_OPERATION;
+		return c;
+	}
+
+	stream->error = !stream->error; /* We couldn't write a character, so we have an error */
+	return SO_EOF;
 }
 
 int so_feof(SO_FILE *stream) {

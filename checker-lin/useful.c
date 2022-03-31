@@ -34,3 +34,9 @@ int readRight(const char *mode) {
 	return !strncmp(mode, "r", 1) || !strncmp(mode, "r+", 2) ||
 		   !strncmp(mode, "w+", 2) || !strncmp(mode, "a+", 2);
 }
+
+int writeRight(const char *mode) {
+	return !strncmp(mode, "r+", 2) || !strncmp(mode, "w+", 2) ||
+	       !strncmp(mode, "w", 1) || !strncmp(mode, "a", 1) ||
+		   !strncmp(mode, "a+", 2);
+}
