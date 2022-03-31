@@ -17,4 +17,4 @@ debug: so_stdio.c useful.c
 .PHONY: clean
 
 clean:
-	rm -f *.o *~ libso_stdio.so
+	rm -f *.o *~ libso_stdio.so testare
