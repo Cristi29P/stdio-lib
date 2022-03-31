@@ -33,3 +33,8 @@ int get_flags(const char *mode) {
 
 	return flags;
 }
+
+int readRight(const char *mode) {
+	return !strncmp(mode, "r", 1) || !strncmp(mode, "r+", 2) ||
+		   !strncmp(mode, "w+", 2) || !strncmp(mode, "a+", 2);
+}

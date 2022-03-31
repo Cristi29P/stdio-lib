@@ -11,6 +11,9 @@ so_stdio.o: so_stdio.c
 
 useful.o: useful.c
 
+debug: so_stdio.c useful.c
+		$(CC) testare.c so_stdio.c useful.c -o testare
+
 .PHONY: clean
 
 clean:

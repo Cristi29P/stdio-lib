@@ -18,5 +18,7 @@
 
 int get_flags(const char *mode);
 
+int readRight(const char *mode);
+
 
 #endif //USEFUL_H
