@@ -9,8 +9,8 @@ struct _so_file {
 	int fd; /* The associated file descriptor */
 	int file_pointer; /* Cursor position inside file. */
 	int buffer_pointer; /* Cursor position inside buffer */
+	int last_bytes; /* Last number of bytes added to the buffer*/
 	char buffer[BUFF_SIZE]; /* The associated file buffer used for I/O tasks */
-	char file_name[PATH_LENGTH];
 	char opening_mode[MODE_LENGTH];
 	char error; /* Flag set if error occurred during file I/O tasks */
 	char eof_reached;
@@ -37,8 +37,8 @@ SO_FILE *so_fopen(const char *pathname, const char *mode) {
 	f->fd = fd;
 	f->file_pointer = 0;
 	f->buffer_pointer = 0;
+	f->last_bytes = 0;
 	memset(f->buffer, '\0', BUFF_SIZE);
-	strncpy(f->file_name, pathname, PATH_LENGTH);
 	strncpy(f->opening_mode, mode, MODE_LENGTH);
 	f->error = 0;
 	return f;
@@ -68,27 +68,18 @@ long so_ftell(SO_FILE *stream) {
 }
 
 size_t so_fread(void *ptr, size_t size, size_t nmemb, SO_FILE *stream) {
-	int total_nr_of_bytes = (int)(size * nmemb);
 	int bytes_read = 0;
 
-	char *buf = calloc(total_nr_of_bytes, sizeof(char));
-
-	if (!buf) {
-		return 0;
-	}
-
-	while (bytes_read < total_nr_of_bytes) {
-		char ch = (char)so_fgetc(stream);
+	while (bytes_read < (int) (size * nmemb)) {
+		char ch = (char) so_fgetc(stream);
 
 		if (so_feof(stream) || so_ferror(stream)) {
 			break;
 		}
 
-		buf[bytes_read++] = ch;
+		((char *) ptr)[bytes_read++] = ch;
 	}
 
-	memcpy(ptr, buf, bytes_read);
-	free(buf);
 	return (bytes_read / size);
 }
 
@@ -100,9 +91,9 @@ size_t so_fwrite(const void *ptr, size_t size, size_t nmemb, SO_FILE *stream) {
 int so_fgetc(SO_FILE *stream) {
 	/* We check if the file is opened under read mode */
 	if (readRight(stream->opening_mode)) {
-		if (stream->buffer_pointer == (int)strnlen(stream->buffer, BUFF_SIZE)) {
+		if (stream->buffer_pointer == stream->last_bytes) {
 			memset(stream->buffer, '\0', BUFF_SIZE); /* Make sure the buffer is clean */
-			int rv = (int)read(stream->fd, stream->buffer, BUFF_SIZE);
+			int rv = (int) read(stream->fd, stream->buffer, BUFF_SIZE);
 
 			if (!rv) {
 				stream->eof_reached = 1;
@@ -114,12 +105,11 @@ int so_fgetc(SO_FILE *stream) {
 				return SO_EOF;
 			}
 
+			stream->last_bytes = rv;
 			stream->buffer_pointer = 0; /* Make sure we read from the beginning of the buffer */
 		}
 		stream->file_pointer++;
-
-		unsigned char c = stream->buffer[stream->buffer_pointer++];
-		return (int) c;
+		return (int) stream->buffer[stream->buffer_pointer++];
 	}
 
 	stream->error = 1; /* We couldn't read a character, so we have an error */

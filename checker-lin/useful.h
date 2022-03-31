@@ -12,7 +12,6 @@
 #include <unistd.h>
 
 #define BUFF_SIZE 4096
-#define PATH_LENGTH 1024
 #define MODE_LENGTH 5
 #define INVALID_FLAGS -1
 
