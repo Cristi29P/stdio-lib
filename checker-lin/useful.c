@@ -1,7 +1,3 @@
-//
-// Created by cristian on 30.03.2022.
-//
-
 #include "useful.h"
 
 int get_flags(const char *mode) {

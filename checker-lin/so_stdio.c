@@ -1,15 +1,12 @@
-//
-// Created by cristian on 29.03.2022.
-//
 #include "so_stdio.h"
 #include "useful.h"
-#include <stdio.h>
 
 struct _so_file {
 	int fd; /* The associated file descriptor */
 	int file_pointer; /* Cursor position inside file. */
 	int buffer_pointer; /* Cursor position inside buffer */
 	int last_bytes; /* Last number of bytes added to the buffer*/
+	int last_action; /* Last I/O operation on the buffer */
 	char buffer[BUFF_SIZE]; /* The associated file buffer used for I/O tasks */
 	char opening_mode[MODE_LENGTH];
 	char error; /* Flag set if error occurred during file I/O tasks */
@@ -45,10 +42,10 @@ SO_FILE *so_fopen(const char *pathname, const char *mode) {
 }
 
 int so_fclose(SO_FILE *stream) {
-	close(stream->fd);
+	int rt = close(stream->fd);
 	free(stream);
 
-	return 0;
+	return rt;
 }
 
 int so_fileno(SO_FILE *stream) {

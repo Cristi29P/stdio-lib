@@ -1,7 +1,3 @@
-//
-// Created by cristian on 30.03.2022.
-//
-
 #ifndef USEFUL_H
 #define USEFUL_H
 
@@ -14,6 +10,8 @@
 #define BUFF_SIZE 4096
 #define MODE_LENGTH 5
 #define INVALID_FLAGS -1
+#define READ_OPERATION 10
+#define WRITE_OPERATION 20
 
 int get_flags(const char *mode);
 
