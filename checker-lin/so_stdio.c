@@ -7,10 +7,10 @@ struct _so_file {
 	int buffer_pointer; /* Cursor position inside buffer */
 	int last_bytes; /* Last number of bytes added to the buffer*/
 	int last_action; /* Last I/O operation on the buffer */
+	int error; /* Flag set if error occurred during I/O tasks */
+	int eof_reached; /* Flag set if eof reached during I/O tasks */
+	char opening_mode[MODE_LENGTH]; /* File read/write/append permissions */
 	char buffer[BUFF_SIZE]; /* The associated file buffer used for I/O tasks */
-	char opening_mode[MODE_LENGTH];
-	int error; /* Flag set if error occurred during file I/O tasks */
-	int eof_reached;
 };
 
 SO_FILE *so_fopen(const char *pathname, const char *mode) {
@@ -84,11 +84,9 @@ size_t so_fread(void *ptr, size_t size, size_t nmemb, SO_FILE *stream) {
 
 	while (bytes_read < (int) (size * nmemb)) {
 		char ch = (char) so_fgetc(stream);
-
 		if (so_feof(stream) || so_ferror(stream)) {
 			break;
 		}
-
 		((char *) ptr)[bytes_read++] = ch;
 	}
 
@@ -96,7 +94,17 @@ size_t so_fread(void *ptr, size_t size, size_t nmemb, SO_FILE *stream) {
 }
 
 size_t so_fwrite(const void *ptr, size_t size, size_t nmemb, SO_FILE *stream) {
-	return 0;
+	int bytes_written = 0;
+
+	while (bytes_written < (int) (size * nmemb)) {
+		so_fputc((int) ((char *) ptr)[bytes_written++], stream);
+		if (so_feof(stream) || so_ferror(stream)) {
+			break;
+		}
+
+	}
+
+	return (bytes_written / size);
 }
 
 
