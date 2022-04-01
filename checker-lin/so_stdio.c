@@ -1,5 +1,6 @@
 #include "so_stdio.h"
 #include "useful.h"
+#include <stdio.h>
 
 struct _so_file {
 	int fd; /* The associated file descriptor */
@@ -43,13 +44,21 @@ SO_FILE *so_fopen(const char *pathname, const char *mode) {
 
 int so_fclose(SO_FILE *stream) {
 	if (stream->last_action == WRITE_OPERATION) {
-		so_fflush(stream);
+		int ret = so_fflush(stream);
+		printf("A TRECUT DE FLUSH IN FCLOSE\n");
+		printf("ret: --%d--\n", ret);
+		if (ret == SO_EOF) {
+			printf("EROARE LA IESIRE FCLOSE DIN FLUSH\n");
+			stream->error = 1;
+			close(stream->fd);
+			free(stream);
+			return SO_EOF;
+		}
 	}
 
 
 	int rt = close(stream->fd);
 	free(stream);
-
 	return rt;
 }
 
@@ -59,15 +68,28 @@ int so_fileno(SO_FILE *stream) {
 
 int so_fflush(SO_FILE *stream) {
 	if (stream->last_action == WRITE_OPERATION) {
-		if (write(stream->fd, stream->buffer, stream->buffer_pointer) < 0) {
-			stream->error = !stream->error;
-			return SO_EOF;
+		size_t bytes_written = 0;
+
+		while (bytes_written < stream->buffer_pointer) {
+			size_t bytes_actually = write(stream->fd, stream->buffer + bytes_written,
+										  stream->buffer_pointer - bytes_written);
+			printf("AICI 73\n");
+
+			if (bytes_actually <= 0) {
+				stream->error = 1;
+				printf("AICI\n");
+				return SO_EOF;
+			}
+
+			bytes_written += bytes_actually;
 		}
 
 		memset(stream->buffer, '\0', BUFF_SIZE);
+		stream->last_bytes = 0;
 		stream->buffer_pointer = 0;
 		return 0;
 	}
+
 	return SO_EOF;
 }
 
@@ -98,12 +120,11 @@ size_t so_fwrite(const void *ptr, size_t size, size_t nmemb, SO_FILE *stream) {
 
 	while (bytes_written < (int) (size * nmemb)) {
 		so_fputc((int) ((char *) ptr)[bytes_written++], stream);
-		if (so_feof(stream) || so_ferror(stream)) {
+		if (so_ferror(stream)) {
 			break;
 		}
 
 	}
-
 	return (bytes_written / size);
 }
 
@@ -141,7 +162,7 @@ int so_fputc(int c, SO_FILE *stream) {
 	if (writeRight(stream->opening_mode)) {
 		if (stream->buffer_pointer == BUFF_SIZE) {
 			if (so_fflush(stream) == SO_EOF) {
-				stream->error = !stream->error;
+				stream->error = 1;
 				return SO_EOF;
 			}
 		}
@@ -152,7 +173,7 @@ int so_fputc(int c, SO_FILE *stream) {
 		return c;
 	}
 
-	stream->error = !stream->error; /* We couldn't write a character, so we have an error */
+	stream->error = 1; /* We couldn't write a character, so we have an error */
 	return SO_EOF;
 }
 
