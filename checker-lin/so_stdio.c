@@ -52,11 +52,12 @@ int so_fclose(SO_FILE *stream) {
 		}
 	}
 
-	if (close(stream->fd)) {
+	int rt = close(stream->fd);
+	if (rt) {
 		stream->error = 1;
 	}
 	free(stream);
-	return 0;
+	return rt;
 }
 
 int so_fileno(SO_FILE *stream) {
