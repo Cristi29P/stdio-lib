@@ -1,6 +1,5 @@
 #include "so_stdio.h"
 #include "useful.h"
-#include <stdio.h>
 
 struct _so_file {
 	int fd; /* The associated file descriptor */
@@ -45,10 +44,7 @@ SO_FILE *so_fopen(const char *pathname, const char *mode) {
 int so_fclose(SO_FILE *stream) {
 	if (stream->last_action == WRITE_OPERATION) {
 		int ret = so_fflush(stream);
-		printf("A TRECUT DE FLUSH IN FCLOSE\n");
-		printf("ret: --%d--\n", ret);
 		if (ret == SO_EOF) {
-			printf("EROARE LA IESIRE FCLOSE DIN FLUSH\n");
 			stream->error = 1;
 			close(stream->fd);
 			free(stream);
@@ -71,13 +67,11 @@ int so_fflush(SO_FILE *stream) {
 		size_t bytes_written = 0;
 
 		while (bytes_written < stream->buffer_pointer) {
-			size_t bytes_actually = write(stream->fd, stream->buffer + bytes_written,
+			ssize_t bytes_actually = write(stream->fd, stream->buffer + bytes_written,
 										  stream->buffer_pointer - bytes_written);
-			printf("AICI 73\n");
 
-			if (bytes_actually <= 0) {
+			if (bytes_actually < 0) {
 				stream->error = 1;
-				printf("AICI\n");
 				return SO_EOF;
 			}
 
@@ -123,7 +117,6 @@ size_t so_fwrite(const void *ptr, size_t size, size_t nmemb, SO_FILE *stream) {
 		if (so_ferror(stream)) {
 			break;
 		}
-
 	}
 	return (bytes_written / size);
 }
