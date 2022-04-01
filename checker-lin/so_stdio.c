@@ -52,10 +52,11 @@ int so_fclose(SO_FILE *stream) {
 		}
 	}
 
-
-	int rt = close(stream->fd);
+	if (close(stream->fd)) {
+		stream->error = 1;
+	}
 	free(stream);
-	return rt;
+	return 0;
 }
 
 int so_fileno(SO_FILE *stream) {
@@ -88,11 +89,30 @@ int so_fflush(SO_FILE *stream) {
 }
 
 int so_fseek(SO_FILE *stream, long offset, int whence) {
+	if (stream->last_action == READ_OPERATION) {
+		memset(stream->buffer, '\0', BUFF_SIZE); /* Buffer invalidate */
+		stream->buffer_pointer = 0;
+		stream->last_bytes = 0;
+	}
+
+	if (stream->last_action == WRITE_OPERATION) {
+		if (so_fflush(stream)) {
+			stream->error = 1;
+			return SO_EOF;
+		}
+	}
+
+	off_t ret = lseek(stream->fd, offset, whence);
+	if (ret == SO_EOF) {
+		return SO_EOF;
+	}
+	stream->file_pointer = ret;
+
 	return 0;
 }
 
 long so_ftell(SO_FILE *stream) {
-	return 0;
+	return stream->file_pointer;
 }
 
 size_t so_fread(void *ptr, size_t size, size_t nmemb, SO_FILE *stream) {
