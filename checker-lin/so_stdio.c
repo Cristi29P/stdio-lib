@@ -13,23 +13,22 @@ struct _so_file {
 	char buffer[BUFF_SIZE]; /* The associated file buffer used for I/O tasks */
 };
 
-SO_FILE *so_fopen(const char *pathname, const char *mode) {
+SO_FILE *so_fopen(const char *pathname, const char *mode)
+{
 	SO_FILE *f = NULL;
 	int flags = get_flags(mode);
 
-	if (flags == INVALID_FLAGS) {
+	if (flags == INVALID_FLAGS)
 		return NULL;
-	}
 
 	int fd = open(pathname, flags, 0644);
-	if (fd < 0) {
+
+	if (fd == SO_EOF)
 		return NULL;
-	}
 
 	f = calloc(1, sizeof(SO_FILE));
-	if (f == NULL) {
+	if (!f)
 		return NULL;
-	}
 
 	f->fd = fd;
 	f->file_pointer = 0;
@@ -41,10 +40,10 @@ SO_FILE *so_fopen(const char *pathname, const char *mode) {
 	return f;
 }
 
-int so_fclose(SO_FILE *stream) {
+int so_fclose(SO_FILE *stream)
+{
 	if (stream->last_action == WRITE_OPERATION) {
-		int ret = so_fflush(stream);
-		if (ret == SO_EOF) {
+		if (so_fflush(stream)) {
 			stream->error = 1;
 			close(stream->fd);
 			free(stream);
@@ -53,24 +52,27 @@ int so_fclose(SO_FILE *stream) {
 	}
 
 	int rt = close(stream->fd);
-	if (rt) {
+
+	if (rt)
 		stream->error = 1;
-	}
+
 	free(stream);
 	return rt;
 }
 
-int so_fileno(SO_FILE *stream) {
+int so_fileno(SO_FILE *stream)
+{
 	return stream->fd;
 }
 
-int so_fflush(SO_FILE *stream) {
+int so_fflush(SO_FILE *stream)
+{
 	if (stream->last_action == WRITE_OPERATION) {
 		size_t bytes_written = 0;
 
 		while (bytes_written < stream->buffer_pointer) {
 			ssize_t bytes_actually = write(stream->fd, stream->buffer + bytes_written,
-										  stream->buffer_pointer - bytes_written);
+										   stream->buffer_pointer - bytes_written);
 
 			if (bytes_actually < 0) {
 				stream->error = 1;
@@ -89,7 +91,8 @@ int so_fflush(SO_FILE *stream) {
 	return SO_EOF;
 }
 
-int so_fseek(SO_FILE *stream, long offset, int whence) {
+int so_fseek(SO_FILE *stream, long offset, int whence)
+{
 	if (stream->last_action == READ_OPERATION) {
 		memset(stream->buffer, '\0', BUFF_SIZE); /* Buffer invalidate */
 		stream->buffer_pointer = 0;
@@ -104,46 +107,51 @@ int so_fseek(SO_FILE *stream, long offset, int whence) {
 	}
 
 	off_t ret = lseek(stream->fd, offset, whence);
-	if (ret == SO_EOF) {
+
+	if (ret == SO_EOF)
 		return SO_EOF;
-	}
+
 	stream->file_pointer = ret;
 
 	return 0;
 }
 
-long so_ftell(SO_FILE *stream) {
+long so_ftell(SO_FILE *stream)
+{
 	return stream->file_pointer;
 }
 
-size_t so_fread(void *ptr, size_t size, size_t nmemb, SO_FILE *stream) {
+size_t so_fread(void *ptr, size_t size, size_t nmemb, SO_FILE *stream)
+{
 	int bytes_read = 0;
 
 	while (bytes_read < (int) (size * nmemb)) {
 		char ch = (char) so_fgetc(stream);
-		if (so_feof(stream) || so_ferror(stream)) {
+
+		if (so_feof(stream) || so_ferror(stream))
 			break;
-		}
+
 		((char *) ptr)[bytes_read++] = ch;
 	}
 
 	return (bytes_read / size);
 }
 
-size_t so_fwrite(const void *ptr, size_t size, size_t nmemb, SO_FILE *stream) {
+size_t so_fwrite(const void *ptr, size_t size, size_t nmemb, SO_FILE *stream)
+{
 	int bytes_written = 0;
 
 	while (bytes_written < (int) (size * nmemb)) {
 		so_fputc((int) ((char *) ptr)[bytes_written++], stream);
-		if (so_ferror(stream)) {
+		if (so_ferror(stream))
 			break;
-		}
 	}
 	return (bytes_written / size);
 }
 
 
-int so_fgetc(SO_FILE *stream) {
+int so_fgetc(SO_FILE *stream)
+{
 	/* We check if the file is opened under read mode */
 	if (readRight(stream->opening_mode)) {
 		if (stream->buffer_pointer == stream->last_bytes) {
@@ -172,7 +180,8 @@ int so_fgetc(SO_FILE *stream) {
 	return SO_EOF;
 }
 
-int so_fputc(int c, SO_FILE *stream) {
+int so_fputc(int c, SO_FILE *stream)
+{
 	if (writeRight(stream->opening_mode)) {
 		if (stream->buffer_pointer == BUFF_SIZE) {
 			if (so_fflush(stream) == SO_EOF) {
@@ -191,18 +200,22 @@ int so_fputc(int c, SO_FILE *stream) {
 	return SO_EOF;
 }
 
-int so_feof(SO_FILE *stream) {
+int so_feof(SO_FILE *stream)
+{
 	return stream->eof_reached;
 }
 
-int so_ferror(SO_FILE *stream) {
+int so_ferror(SO_FILE *stream)
+{
 	return stream->error;
 }
 
-SO_FILE *so_popen(const char *command, const char *type) {
+SO_FILE *so_popen(const char *command, const char *type)
+{
 	return NULL;
 }
 
-int so_pclose(SO_FILE *stream) {
+int so_pclose(SO_FILE *stream)
+{
 	return 0;
 }
