@@ -254,15 +254,19 @@ SO_FILE *so_popen(const char *command, const char *type)
 	case 0:
 		/* Child process */
 		if (readRight(type)) {
-			close(file_des[PIPE_READ]); /* Close unused input pipe end */
+			if (close(file_des[PIPE_READ])) /* Close unused input pipe end */
+				return NULL;
 			/* Redirect output of command to pipe output end in child process */
 			dup2(file_des[PIPE_WRITE], STDOUT_FILENO);
-			close(file_des[PIPE_WRITE]); /* Close the old fd */
+			if (close(file_des[PIPE_WRITE])) /* Close the old fd */
+				return NULL;
 		} else {
-			close(file_des[PIPE_WRITE]); /* Close unused output pipe end */
+			if (close(file_des[PIPE_WRITE])) /* Close unused output pipe end */
+				return NULL;
 			/* Redirect input of command to pipe input end in child process */
 			dup2(file_des[PIPE_READ], STDIN_FILENO);
-			close(file_des[PIPE_READ]); /* Close the old fd */
+			if (close(file_des[PIPE_READ])) /* Close the old fd */
+				return NULL;
 		}
 		char *const argvec[] = {"sh", "-c", (char *const)command, NULL};
 
@@ -292,7 +296,7 @@ int so_pclose(SO_FILE *stream)
 {
 	pid_t pid = stream->pid;
 
-	if (pid != -1) {
+	if (pid != -1) { /* This means the file was opened via so_popen */
 		if (so_fclose(stream)) {
 			stream->error = 1;
 			return SO_EOF;
