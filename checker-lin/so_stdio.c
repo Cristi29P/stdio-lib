@@ -2,6 +2,7 @@
 #include "useful.h"
 
 struct _so_file {
+	pid_t pid;
 	int fd; /* The associated file descriptor */
 	int file_pointer; /* Cursor position inside file. */
 	int buffer_pointer; /* Cursor position inside buffer */
@@ -30,6 +31,7 @@ SO_FILE *so_fopen(const char *pathname, const char *mode)
 	if (!f)
 		return NULL;
 
+	f->pid = -1;
 	f->fd = fd;
 	f->file_pointer = 0;
 	f->buffer_pointer = 0;
@@ -68,10 +70,10 @@ int so_fileno(SO_FILE *stream)
 int so_fflush(SO_FILE *stream)
 {
 	if (stream->last_action == WRITE_OPERATION) {
-		size_t bytes_written = 0;
+		int bytes_written = 0;
 
 		while (bytes_written < stream->buffer_pointer) {
-			ssize_t bytes_actually = write(stream->fd, stream->buffer + bytes_written,
+			int bytes_actually = (int)write(stream->fd, stream->buffer + bytes_written,
 										   stream->buffer_pointer - bytes_written);
 
 			if (bytes_actually < 0) {
@@ -111,7 +113,7 @@ int so_fseek(SO_FILE *stream, long offset, int whence)
 	if (ret == SO_EOF)
 		return SO_EOF;
 
-	stream->file_pointer = ret;
+	stream->file_pointer = (int)ret;
 
 	return 0;
 }
@@ -210,12 +212,99 @@ int so_ferror(SO_FILE *stream)
 	return stream->error;
 }
 
+SO_FILE *custom_file(pid_t pid, int file_descriptor, const char *mode)
+{
+	SO_FILE *f = NULL;
+	int flags = get_flags(mode);
+
+	if (flags == INVALID_FLAGS)
+		return NULL;
+
+	f = calloc(1, sizeof(SO_FILE));
+	if (!f)
+		return NULL;
+
+	f->fd = file_descriptor;
+	f->pid = pid;
+	f->file_pointer = 0;
+	f->buffer_pointer = 0;
+	f->last_bytes = 0;
+	memset(f->buffer, '\0', BUFF_SIZE);
+	strncpy(f->opening_mode, mode, MODE_LENGTH);
+	f->error = 0;
+	return f;
+}
+
 SO_FILE *so_popen(const char *command, const char *type)
 {
-	return NULL;
+	SO_FILE *f = NULL;
+	pid_t pid;
+	int file_des[2], fd_file;
+
+	if (pipe(file_des))
+		return NULL;
+
+	pid = fork();
+	switch (pid) {
+	case -1:
+		/* Fork failed */
+		close(file_des[PIPE_READ]);
+		close(file_des[PIPE_WRITE]);
+		return NULL;
+	case 0:
+		/* Child process */
+		if (readRight(type)) {
+			close(file_des[PIPE_READ]); /* Close unused input pipe end */
+			/* Redirect output of command to pipe output end in child process */
+			dup2(file_des[PIPE_WRITE], STDOUT_FILENO);
+			close(file_des[PIPE_WRITE]); /* Close the old fd */
+		} else {
+			close(file_des[PIPE_WRITE]); /* Close unused output pipe end */
+			/* Redirect input of command to pipe input end in child process */
+			dup2(file_des[PIPE_READ], STDIN_FILENO);
+			close(file_des[PIPE_READ]); /* Close the old fd */
+		}
+		char *const argvec[] = {"sh", "-c", (char *const)command, NULL};
+
+		execvp("sh", argvec);
+		exit(EXIT_FAILURE);
+	default:
+		/* Parent process */
+		if (readRight(type)) {
+			if (close(file_des[PIPE_WRITE]))
+				return NULL;
+
+			fd_file = file_des[PIPE_READ];
+		} else {
+			if (close(file_des[PIPE_READ]))
+				return NULL;
+
+			fd_file = file_des[PIPE_WRITE];
+		}
+		break;
+	}
+	f = custom_file(pid, fd_file, type);
+
+	return f;
 }
 
 int so_pclose(SO_FILE *stream)
 {
-	return 0;
+	pid_t pid = stream->pid;
+
+	if (pid != -1) {
+		if (so_fclose(stream)) {
+			stream->error = 1;
+			return SO_EOF;
+		}
+
+		int status;
+
+		if (waitpid(pid, &status, 0) < 0)
+			return -1;
+
+		return status;
+	}
+
+	return -1;
 }

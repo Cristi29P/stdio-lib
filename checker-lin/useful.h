@@ -4,6 +4,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <fcntl.h>
 #include <unistd.h>
 
@@ -12,6 +13,8 @@
 #define INVALID_FLAGS -1
 #define READ_OPERATION 10
 #define WRITE_OPERATION 20
+#define PIPE_READ 0
+#define PIPE_WRITE 1
 
 int get_flags(const char *mode);
 
