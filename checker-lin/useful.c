@@ -1,5 +1,6 @@
 #include "useful.h"
 
+/* Set the file's permissions */
 int get_flags(const char *mode)
 {
 	int flags = INVALID_FLAGS;
@@ -25,12 +26,14 @@ int get_flags(const char *mode)
 	return flags;
 }
 
+/* Check if you are allowed to read from the file */
 int readRight(const char *mode)
 {
 	return !strncmp(mode, "r", 1) || !strncmp(mode, "r+", 2) ||
 		   !strncmp(mode, "w+", 2) || !strncmp(mode, "a+", 2);
 }
 
+/* Check if you are allowed to write to the file */
 int writeRight(const char *mode)
 {
 	return !strncmp(mode, "r+", 2) || !strncmp(mode, "w+", 2) ||
