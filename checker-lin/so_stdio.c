@@ -34,14 +34,7 @@ SO_FILE *so_fopen(const char *pathname, const char *mode)
 
 	f->pid = -1; /* Default file opening mode has no process attached */
 	f->fd = fd;
-	f->file_pointer = 0;
-	f->buffer_pointer = 0;
-	f->last_bytes = 0;
-	f->last_action = 0; /* No action performed so far */
-	f->error = 0;
-	f->eof_reached = 0;
 	strncpy(f->opening_mode, mode, MODE_LENGTH);
-	memset(f->buffer, '\0', BUFF_SIZE); /* Make sure the buffer is empty */
 
 	return f;
 }
@@ -139,7 +132,6 @@ size_t so_fread(void *ptr, size_t size, size_t nmemb, SO_FILE *stream)
 
 		((char *) ptr)[bytes_read++] = ch;
 	}
-
 	return (bytes_read / size);
 }
 
@@ -170,7 +162,7 @@ int so_fgetc(SO_FILE *stream)
 			}
 
 			if (rv < 0) {
-				stream->error = !stream->error;
+				stream->error = 1;
 				return SO_EOF;
 			}
 
@@ -182,7 +174,7 @@ int so_fgetc(SO_FILE *stream)
 		return (int) stream->buffer[stream->buffer_pointer++];
 	}
 
-	stream->error = !stream->error; /* We couldn't read a character, so we have an error */
+	stream->error = 1; /* We couldn't read a character, so we have an error */
 	return SO_EOF;
 }
 
@@ -229,11 +221,7 @@ SO_FILE *custom_file(pid_t pid, int file_descriptor, const char *mode)
 
 	f->pid = pid;
 	f->fd = file_descriptor;
-	f->file_pointer = 0;
-	f->buffer_pointer = 0;
-	f->last_bytes = 0;
 	strncpy(f->opening_mode, mode, MODE_LENGTH);
-	memset(f->buffer, '\0', BUFF_SIZE);
 
 	return f;
 }
@@ -305,11 +293,11 @@ int so_pclose(SO_FILE *stream)
 			return SO_EOF;
 
 		if (waitpid(pid, &status, 0) < 0)
-			return -1;
+			return SO_EOF;
 
 		return status;
 	}
 
 	/* We cannot call so_pclose on a file not opened with so_popen */
-	return -1;
+	return SO_EOF;
 }
