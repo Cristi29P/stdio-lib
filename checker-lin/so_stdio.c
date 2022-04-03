@@ -248,7 +248,7 @@ SO_FILE *so_popen(const char *command, const char *type)
 		return NULL;
 
 	pid = fork();
-	switch (pid) {
+	switch (pid) { /* Switch case structure taken from lab 3 (processes) */
 	case -1:
 		/* Fork failed */
 		close(file_des[PIPE_READ]);
