@@ -230,9 +230,6 @@ SO_FILE *custom_file(pid_t pid, int file_descriptor, const char *mode)
 	f->file_pointer = 0;
 	f->buffer_pointer = 0;
 	f->last_bytes = 0;
-	f->last_action = 0;
-	f->error = 0;
-	f->eof_reached = 0;
 	strncpy(f->opening_mode, mode, MODE_LENGTH);
 	memset(f->buffer, '\0', BUFF_SIZE);
 
