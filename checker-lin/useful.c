@@ -1,3 +1,4 @@
+/* @Copyright Paris Cristian-Tanase / Operating Systems 2022 */
 #include "useful.h"
 
 /* Set the file's permissions */

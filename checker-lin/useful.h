@@ -1,3 +1,4 @@
+/* @Copyright Paris Cristian-Tanase / Operating Systems 2022 */
 #ifndef USEFUL_H
 #define USEFUL_H
 

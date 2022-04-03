@@ -1,3 +1,4 @@
+/* @Copyright Paris Cristian-Tanase / Operating Systems 2022 */
 #include "so_stdio.h"
 #include "useful.h"
 
@@ -72,7 +73,8 @@ int so_fflush(SO_FILE *stream)
 {
 	if (stream->last_action == WRITE_OPERATION) {
 		int bytes_written = 0;
-
+		/* Write the entire buffer to the file */
+		/* Loop implementation taken from lab 2 solutions (xwrite function) */
 		while (bytes_written < stream->buffer_pointer) {
 			int bytes_actually = (int)write(stream->fd, stream->buffer + bytes_written,
 										   stream->buffer_pointer - bytes_written);
