@@ -2,9 +2,9 @@
 #include "useful.h"
 
 struct _so_file {
-	pid_t pid;
+	pid_t pid; /* Pid associated with the child process */
 	int fd; /* The associated file descriptor */
-	int file_pointer; /* Cursor position inside file. */
+	int file_pointer; /* Cursor position inside file */
 	int buffer_pointer; /* Cursor position inside buffer */
 	int last_bytes; /* Last number of bytes added to the buffer*/
 	int last_action; /* Last I/O operation on the buffer */
@@ -31,19 +31,23 @@ SO_FILE *so_fopen(const char *pathname, const char *mode)
 	if (!f)
 		return NULL;
 
-	f->pid = -1;
+	f->pid = -1; /* Default file opening mode has no process attached */
 	f->fd = fd;
 	f->file_pointer = 0;
 	f->buffer_pointer = 0;
 	f->last_bytes = 0;
-	memset(f->buffer, '\0', BUFF_SIZE);
-	strncpy(f->opening_mode, mode, MODE_LENGTH);
+	f->last_action = 0; /* No action performed so far */
 	f->error = 0;
+	f->eof_reached = 0;
+	strncpy(f->opening_mode, mode, MODE_LENGTH);
+	memset(f->buffer, '\0', BUFF_SIZE); /* Make sure the buffer is empty */
+
 	return f;
 }
 
 int so_fclose(SO_FILE *stream)
 {
+	/* The buffer needs to be flushed if last I/O task was to write */
 	if (stream->last_action == WRITE_OPERATION) {
 		if (so_fflush(stream)) {
 			stream->error = 1;
@@ -54,9 +58,6 @@ int so_fclose(SO_FILE *stream)
 	}
 
 	int rt = close(stream->fd);
-
-	if (rt)
-		stream->error = 1;
 
 	free(stream);
 	return rt;
@@ -95,12 +96,13 @@ int so_fflush(SO_FILE *stream)
 
 int so_fseek(SO_FILE *stream, long offset, int whence)
 {
+	/* Invalidate the buffer if the last I/O task was read */
 	if (stream->last_action == READ_OPERATION) {
-		memset(stream->buffer, '\0', BUFF_SIZE); /* Buffer invalidate */
+		memset(stream->buffer, '\0', BUFF_SIZE);
 		stream->buffer_pointer = 0;
 		stream->last_bytes = 0;
 	}
-
+	/* Flush the buffer if the last I/O task was write */
 	if (stream->last_action == WRITE_OPERATION) {
 		if (so_fflush(stream)) {
 			stream->error = 1;
@@ -113,7 +115,7 @@ int so_fseek(SO_FILE *stream, long offset, int whence)
 	if (ret == SO_EOF)
 		return SO_EOF;
 
-	stream->file_pointer = (int)ret;
+	stream->file_pointer = (int)ret; /* Set new file pointer location */
 
 	return 0;
 }
@@ -215,23 +217,25 @@ int so_ferror(SO_FILE *stream)
 SO_FILE *custom_file(pid_t pid, int file_descriptor, const char *mode)
 {
 	SO_FILE *f = NULL;
-	int flags = get_flags(mode);
 
-	if (flags == INVALID_FLAGS)
+	if (get_flags(mode) == INVALID_FLAGS)
 		return NULL;
 
 	f = calloc(1, sizeof(SO_FILE));
 	if (!f)
 		return NULL;
 
-	f->fd = file_descriptor;
 	f->pid = pid;
+	f->fd = file_descriptor;
 	f->file_pointer = 0;
 	f->buffer_pointer = 0;
 	f->last_bytes = 0;
-	memset(f->buffer, '\0', BUFF_SIZE);
-	strncpy(f->opening_mode, mode, MODE_LENGTH);
+	f->last_action = 0;
 	f->error = 0;
+	f->eof_reached = 0;
+	strncpy(f->opening_mode, mode, MODE_LENGTH);
+	memset(f->buffer, '\0', BUFF_SIZE);
+
 	return f;
 }
 
@@ -295,14 +299,11 @@ SO_FILE *so_popen(const char *command, const char *type)
 int so_pclose(SO_FILE *stream)
 {
 	pid_t pid = stream->pid;
+	int status;
 
 	if (pid != -1) { /* This means the file was opened via so_popen */
-		if (so_fclose(stream)) {
-			stream->error = 1;
+		if (so_fclose(stream))
 			return SO_EOF;
-		}
-
-		int status;
 
 		if (waitpid(pid, &status, 0) < 0)
 			return -1;
@@ -310,5 +311,6 @@ int so_pclose(SO_FILE *stream)
 		return status;
 	}
 
+	/* We cannot call so_pclose on a file not opened with so_popen */
 	return -1;
 }
