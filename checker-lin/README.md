@@ -24,7 +24,8 @@ if the last operation was, of course, to write.
 * If you open a process using the popen function, the interface for communicating with it is the SO_FILE provided
   (it provides a level of abstraction over the conventional pipe).  That means that if you want to issue an argument
 or command to that process, you need to write to the resulting file. Reading the output from that process is a
-similar story.
+similar story. This is the main way the parent and child process communicate.
+* We always make sure that we close the proper pipe ends in the processes, by checking the type parameter.
 * Closing the process automatically frees up all the allocated resources.
 
 * I found this homework extremely useful as I've better understood the core concepts of low-level
