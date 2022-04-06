@@ -12,10 +12,42 @@ only differences are, as I said earlier, the API specific functions.
 General Structure
 -
 
+* For opening and closing the files I've relied upon the close and open system calls, while checking
+the return values to make sure that no error was encountered.
+* Reading and writing to the file makes use of an internal associated buffer. While reading, the function
+tries each time to fill up the buffer to its max capacity (chunks of 4096 bytes). If there is still data
+in the buffer, the function automatically retrieves the first character the buffer pointer points to. Writing
+goes pretty much the same way, excepting the fact that we write to the main file when: the buffer is full,
+flush is called or the file is closed.
+* Flushing and closing make the program automatically write the entire content of the internal buffer to the file,
+if the last operation was, of course, to write.
+* If you open a process using the popen function, the interface for communicating with it is the SO_FILE provided
+  (it provides a level of abstraction over the conventional pipe).  That means that if you want to issue an argument
+or command to that process, you need to write to the resulting file. Reading the output from that process is a
+similar story.
+* Closing the process automatically frees up all the allocated resources.
+
+* I found this homework extremely useful as I've better understood the core concepts of low-level
+I/O functions.
+* From my point of view, the current implementation is as simple and efficient as it could possibly be,
+while not being naive. It is written in such way that anyone reading the source files for the first time
+could understand it.
+
+
 Implementation
 -
-
-
+* The entire functionality of the homework has been implemented.
+* Technical difficulties:
+   * The checker is rather slow.
+   * No timeout functionality added to a test file that might result in `Segmentations faults`. Also,
+    unless the program crashes or does not manifest the correct behaviour, no output
+    from the checker is provided, as info messages are not flushed to `stdout`.
+   * Checker should take care of calling the Makefile and cleaning the resulting files.
+* Interesting facts:
+   * If you are not checking the return values for nearly every system call, you are going to
+   have a bad time sooner or later.
+   * Buffering saves you a great deal of time.
+   
 How should I compile and run this library?
 -
 After you've downloaded or cloned the repository, just do `make build` or
