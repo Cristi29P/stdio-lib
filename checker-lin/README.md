@@ -81,4 +81,4 @@ Resources
 
 Git
 -
-* Link: [Stdio-lib](https://github.com/Cristi29P/stdio-lib.git) - repository should be public after the 7th of April. Otherwise, please contact me on Microsoft Teams or e-mail.
+* Link: [Stdio-lib](https://github.com/Cristi29P/stdio-lib.git) - repository should be public after the 11th of April. Otherwise, please contact me on Microsoft Teams or e-mail.
